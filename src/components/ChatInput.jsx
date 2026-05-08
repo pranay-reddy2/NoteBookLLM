@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Send, Loader2 } from 'lucide-react'
+import { ArrowUp, Loader2 } from 'lucide-react'
 
 export default function ChatInput({ onSend, isLoading, disabled }) {
   const [query, setQuery] = useState('')
@@ -28,60 +28,46 @@ export default function ChatInput({ onSend, isLoading, disabled }) {
 
   const handleChange = (e) => {
     setQuery(e.target.value)
-    // Auto-resize textarea
     const el = e.target
     el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`
   }
 
   const canSend = query.trim() && !isLoading && !disabled
 
   return (
-    <form onSubmit={handleSubmit} className="relative">
-      <div
-        className={`
-          flex items-end gap-2 px-3 py-3 rounded-xl border transition-all duration-200
-          ${disabled
-            ? 'border-ink-800/40 bg-ink-900/20 opacity-60'
-            : 'border-ink-700/50 bg-ink-800/40 hover:border-ink-600/60 focus-within:border-amber-500/40 focus-within:bg-ink-800/60'
-          }
-        `}
-      >
+    <div>
+      <div className={`chat-input-wrap${disabled ? ' disabled' : ''}`}>
         <textarea
           ref={textareaRef}
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder={disabled ? 'Upload a document to start chatting…' : 'Ask anything about your documents…'}
+          placeholder={
+            disabled
+              ? 'Upload a document to start chatting…'
+              : 'Ask anything about your documents…'
+          }
           disabled={disabled || isLoading}
           rows={1}
-          className="flex-1 bg-transparent text-sm text-ink-200 placeholder-ink-600 resize-none outline-none min-h-[24px] max-h-40 leading-6 font-body"
+          className="chat-textarea"
           style={{ height: 'auto' }}
         />
 
         <motion.button
-          type="submit"
+          onClick={handleSubmit}
           disabled={!canSend}
           whileTap={canSend ? { scale: 0.9 } : {}}
-          className={`
-            flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200
-            ${canSend
-              ? 'bg-amber-500 hover:bg-amber-400 text-ink-950 shadow-lg shadow-amber-500/20'
-              : 'bg-ink-700/50 text-ink-600 cursor-not-allowed'
-            }
-          `}
+          className="send-btn"
         >
-          {isLoading ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <Send size={14} />
-          )}
+          {isLoading
+            ? <Loader2 size={14} className="spin" />
+            : <ArrowUp size={14} strokeWidth={2.2} />
+          }
         </motion.button>
       </div>
 
-      <p className="text-[10px] text-ink-700 text-center mt-1.5">
-        Press Enter to send • Shift+Enter for new line
-      </p>
-    </form>
+      <p className="input-hint">Enter ↵ to send &nbsp;·&nbsp; Shift+Enter for newline</p>
+    </div>
   )
 }

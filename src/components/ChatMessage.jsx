@@ -2,79 +2,59 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { BookOpen, ChevronDown, ChevronUp, User, Bot, AlertTriangle, Clock } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronUp, User, Bot, AlertTriangle } from 'lucide-react'
 
 export default function ChatMessage({ message, index }) {
   const [sourcesExpanded, setSourcesExpanded] = useState(false)
-  const isUser = message.role === 'user'
-  const isError = message.role === 'error'
+  const isUser      = message.role === 'user'
+  const isError     = message.role === 'error'
   const isAssistant = message.role === 'assistant'
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.03, ease: 'easeOut' }}
-      className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+      transition={{ duration: 0.3, delay: index * 0.025, ease: 'easeOut' }}
+      className={`msg-${isUser ? 'user' : isError ? 'error' : 'assistant'}`}
+      style={{
+        display: 'flex',
+        gap: 10,
+        flexDirection: isUser ? 'row-reverse' : 'row',
+        alignItems: 'flex-start',
+      }}
     >
       {/* Avatar */}
-      <div className="flex-shrink-0 mt-0.5">
-        {isUser ? (
-          <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-            <User size={13} className="text-amber-400" />
-          </div>
-        ) : isError ? (
-          <div className="w-7 h-7 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center">
-            <AlertTriangle size={13} className="text-rose-400" />
-          </div>
-        ) : (
-          <div className="w-7 h-7 rounded-full bg-ink-800 border border-ink-700/50 flex items-center justify-center">
-            <Bot size={13} className="text-ink-400" />
-          </div>
-        )}
+      <div className={`msg-avatar ${isUser ? 'user' : isError ? 'error' : 'assistant'}`}>
+        {isUser    && <User          size={12} color="var(--paper-200)" strokeWidth={2} />}
+        {isError   && <AlertTriangle size={12} color="var(--crimson)"   strokeWidth={2} />}
+        {isAssistant && <Bot         size={12} color="var(--ink-500)"   strokeWidth={2} />}
       </div>
 
-      {/* Bubble */}
-      <div className={`flex flex-col gap-1.5 max-w-[82%] ${isUser ? 'items-end' : 'items-start'}`}>
-        {/* Message body */}
-        <div
-          className={`
-            rounded-2xl px-4 py-3 text-sm leading-relaxed
-            ${isUser
-              ? 'bg-amber-500/15 border border-amber-500/20 text-ink-100 rounded-tr-sm'
-              : isError
-              ? 'bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded-tl-sm'
-              : 'bg-ink-800/60 border border-ink-700/40 text-ink-200 rounded-tl-sm'
-            }
-          `}
-        >
+      {/* Content column */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        maxWidth: '78%',
+        alignItems: isUser ? 'flex-end' : 'flex-start',
+      }}>
+        {/* Bubble */}
+        <div className="bubble">
           {isUser || isError ? (
-            <p>{message.content}</p>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65 }}>{message.content}</p>
           ) : (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                strong: ({ children }) => (
-                  <strong className="font-semibold text-ink-100">{children}</strong>
-                ),
-                code: ({ inline, children }) =>
-                  inline ? (
-                    <code className="font-mono text-xs bg-ink-700/60 rounded px-1 py-0.5 text-amber-300">
-                      {children}
-                    </code>
-                  ) : (
-                    <pre className="font-mono text-xs bg-ink-900/60 rounded-lg p-3 mt-2 overflow-x-auto border border-ink-700/30">
-                      <code>{children}</code>
-                    </pre>
-                  ),
-                ul: ({ children }) => (
-                  <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>
-                ),
-                li: ({ children }) => <li className="text-ink-300">{children}</li>,
+                p:      ({ children }) => <p>{children}</p>,
+                strong: ({ children }) => <strong>{children}</strong>,
+                code:   ({ inline, children }) =>
+                  inline
+                    ? <code>{children}</code>
+                    : <pre><code>{children}</code></pre>,
+                ul: ({ children }) => <ul>{children}</ul>,
+                ol: ({ children }) => <ol>{children}</ol>,
+                li: ({ children }) => <li>{children}</li>,
               }}
             >
               {message.content}
@@ -82,35 +62,33 @@ export default function ChatMessage({ message, index }) {
           )}
         </div>
 
-        {/* Metadata row */}
-        <div className="flex items-center gap-3 px-1">
+        {/* Meta row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 2 }}>
           {message.processingTime && (
-            <span className="flex items-center gap-1 text-[10px] text-ink-600 font-mono">
-              <Clock size={9} />
+            <span className="processing-time">
               {message.processingTime}ms
             </span>
           )}
 
-          {/* Source toggle */}
           {isAssistant && message.sources?.length > 0 && (
             <button
               onClick={() => setSourcesExpanded((p) => !p)}
-              className="flex items-center gap-1 text-[11px] text-amber-500/70 hover:text-amber-400 transition-colors font-medium"
+              className="sources-toggle"
             >
-              <BookOpen size={11} />
+              <BookOpen size={10} strokeWidth={2} />
               {message.sources.length} source{message.sources.length !== 1 ? 's' : ''}
-              {sourcesExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+              {sourcesExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
             </button>
           )}
         </div>
 
-        {/* Sources panel */}
+        {/* Sources */}
         {sourcesExpanded && message.sources?.length > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="w-full space-y-1.5"
+            style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}
           >
             {message.sources.map((source, i) => (
               <SourceCard key={source.chunk_id} source={source} index={i} />
@@ -124,41 +102,40 @@ export default function ChatMessage({ message, index }) {
 
 function SourceCard({ source, index }) {
   const [expanded, setExpanded] = useState(false)
-  const scorePercent = Math.round(source.similarity_score * 100)
+  const score = Math.round(source.similarity_score * 100)
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -8 }}
+      initial={{ opacity: 0, x: -6 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.05 }}
-      className="glass-panel-light p-3 text-xs space-y-1.5"
+      transition={{ delay: index * 0.04 }}
+      className="source-card"
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <BookOpen size={11} className="text-amber-400 flex-shrink-0" />
-          <span className="text-ink-400 truncate font-medium">{source.source}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+          <BookOpen size={10} color="var(--accent)" strokeWidth={2} />
+          <span className="source-filename" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {source.source}
+          </span>
           {source.page_number && (
-            <span className="text-ink-600 flex-shrink-0">p.{source.page_number}</span>
+            <span style={{ fontSize: 10, color: 'var(--ink-400)', flexShrink: 0 }}>
+              p.{source.page_number}
+            </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Relevance score bar */}
-          <div className="flex items-center gap-1">
-            <div className="w-12 h-1 bg-ink-700 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full bg-amber-400"
-                style={{ width: `${scorePercent}%` }}
-              />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div className="source-score-bar">
+              <div className="source-score-fill" style={{ width: `${score}%` }} />
             </div>
-            <span className="text-[10px] text-ink-500 font-mono w-7 text-right">
-              {scorePercent}%
+            <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--ink-400)', width: 28, textAlign: 'right' }}>
+              {score}%
             </span>
           </div>
-
           <button
             onClick={() => setExpanded((p) => !p)}
-            className="text-ink-600 hover:text-ink-400 transition-colors"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-400)', padding: '2px 3px', display: 'flex' }}
           >
             {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
           </button>
@@ -169,7 +146,7 @@ function SourceCard({ source, index }) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="font-mono text-[11px] text-ink-500 leading-relaxed bg-ink-900/40 rounded-lg p-2.5 border border-ink-800/40"
+          className="source-content"
         >
           {source.content}
         </motion.div>
