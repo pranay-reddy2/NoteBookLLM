@@ -14,18 +14,42 @@ import EmptyState from './components/EmptyState'
 
 import { useChat } from './hooks/useChat'
 import { useDocuments } from './hooks/useDocuments'
+import { waitForServer } from './utils/api'
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const chatEndRef = useRef(null)
   const [pendingQuery, setPendingQuery] = useState(null)
 
+  // 'warming' while the backend cold-starts, 'ready' once /health answers,
+  // 'down' if it never does. Fired immediately on page load.
+  const [serverStatus, setServerStatus] = useState('warming')
+  const [warmupSeconds, setWarmupSeconds] = useState(0)
+
   const {
     documents, isUploading, uploadProgress,
-    uploadError, isLoadingDocs, upload, remove,
+    uploadError, isLoadingDocs, upload, remove, reload,
   } = useDocuments()
 
   const { messages, isLoading, sendMessage, clearChat } = useChat()
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const startedAt = Date.now()
+    const tick = setInterval(() => setWarmupSeconds(Math.round((Date.now() - startedAt) / 1000)), 1000)
+
+    waitForServer({ signal: controller.signal }).then((ok) => {
+      clearInterval(tick)
+      if (controller.signal.aborted) return
+      setServerStatus(ok ? 'ready' : 'down')
+      if (ok) reload() // the initial /documents call may have failed while the server was asleep
+    })
+
+    return () => {
+      controller.abort()
+      clearInterval(tick)
+    }
+  }, [reload])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -47,6 +71,31 @@ export default function App() {
 
       {/* Header */}
       <Header />
+
+      {/* Cold-start banner: free hosting sleeps when idle, so the first
+          request of the day can take up to a minute. Never look like a hang. */}
+      <AnimatePresence>
+        {serverStatus !== 'ready' && (
+          <motion.div
+            key="server-banner"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className={`server-banner ${serverStatus === 'down' ? 'server-banner--down' : ''}`}
+            role="status"
+          >
+            {serverStatus === 'warming' ? (
+              <>
+                <span className="server-banner-spinner" />
+                Warming up the server… free hosting sleeps when idle, this usually takes 30–60 s
+                {warmupSeconds > 3 && <span className="server-banner-time">({warmupSeconds}s)</span>}
+              </>
+            ) : (
+              <>The server isn’t responding. Refresh in a minute, or email pranayreddy672@gmail.com.</>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Body */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -160,7 +209,11 @@ export default function App() {
           {/* Input */}
           <div className="chat-input-bar">
             <div className="inner">
-              <ChatInput onSend={sendMessage} isLoading={isLoading} disabled={!hasDocuments} />
+              <ChatInput
+                onSend={sendMessage}
+                isLoading={isLoading}
+                disabled={!hasDocuments || serverStatus !== 'ready'}
+              />
             </div>
           </div>
 

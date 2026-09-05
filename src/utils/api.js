@@ -72,8 +72,34 @@ export const fetchDocuments = () => api.get('/documents')
 export const deleteDocument = (documentId) => api.delete(`/documents/${documentId}`)
 
 /**
- * Health check.
+ * Health check. Short timeout: it either answers in milliseconds or the
+ * server is still cold-starting and we should just try again.
  */
-export const healthCheck = () => api.get('/health')
+export const healthCheck = () => api.get('/health', { timeout: 6_000 })
+
+/**
+ * Poll /health until the backend answers, so a Render cold start (which can
+ * take a minute) shows as "warming up" instead of a silent hang.
+ *
+ * @param {{ onAttempt?: (n: number) => void, maxWaitMs?: number, signal?: AbortSignal }} opts
+ * @returns {Promise<boolean>} true once healthy, false if we gave up
+ */
+export const waitForServer = async ({ onAttempt, maxWaitMs = 180_000, signal } = {}) => {
+  const startedAt = Date.now()
+  let attempt = 0
+  while (Date.now() - startedAt < maxWaitMs) {
+    if (signal?.aborted) return false
+    attempt += 1
+    onAttempt?.(attempt)
+    try {
+      const res = await healthCheck()
+      if (res.data?.ok) return true
+    } catch {
+      // still asleep / booting — fall through and retry
+    }
+    await new Promise((r) => setTimeout(r, Math.min(1_000 + attempt * 500, 4_000)))
+  }
+  return false
+}
 
 export default api

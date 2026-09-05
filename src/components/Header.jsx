@@ -23,7 +23,7 @@ export default function Header() {
       {/* Right */}
       <div className="header-badge">
         <span className="dot" />
-        Gemini 1.5 Flash
+        Llama 3.3 · Groq
       </div>
     </motion.header>
   )
